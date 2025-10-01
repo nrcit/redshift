@@ -34,7 +34,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::464037860553:role/github-actions-redshift-role
           aws-region: us-east-1
-          
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -46,7 +46,7 @@ jobs:
       - name: Get Redshift Password
         id: get_secret
         run: |
-          SECRET_NAME="redshift-master-password"
+          SECRET_NAME="dev-redshift-master-password2"
           PASSWORD=$(aws secretsmanager get-secret-value \
             --secret-id $SECRET_NAME \
             --query SecretString \

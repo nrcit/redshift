@@ -1,0 +1,65 @@
+name: Run SQL on Redshift
+
+on:
+  workflow_dispatch:
+    # workflows: ["Deploy Infra"]   # exact name from deploy-infra.yml
+    # types:
+    #   - completed
+    
+    inputs:
+      branch:
+        description: "Git branch to checkout"
+        required: true
+        type: string
+      sql_path:
+        description: "Path to SQL file or folder"
+        required: true
+        type: string
+      execution_order:
+        description: "Comma-separated list of SQL files (optional)"
+        required: false
+        type: string
+
+jobs:
+  execute-sql:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::464037860553:role/github-actions-redshift-role
+          aws-region: us-east-1
+          
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Get Redshift Password
+        id: get_secret
+        run: |
+          SECRET_NAME="redshift-master-password"
+          PASSWORD=$(aws secretsmanager get-secret-value \
+            --secret-id $SECRET_NAME \
+            --query SecretString \
+            --output text)
+          echo "REDSHIFT_PASSWORD=$PASSWORD" >> $GITHUB_ENV
+
+      - name: Execute SQL
+        run: python scripts/run_sql.py
+        env:
+          SQL_PATH: ${{ github.event.inputs.sql_path }}
+          EXECUTION_ORDER: ${{ github.event.inputs.execution_order }}
+          REDSHIFT_HOST: ${{ secrets.REDSHIFT_HOST }}
+          REDSHIFT_PORT: ${{ secrets.REDSHIFT_PORT }}
+          REDSHIFT_DB: ${{ secrets.REDSHIFT_DB }}
+          REDSHIFT_USER: ${{ secrets.REDSHIFT_USER }}
+          
